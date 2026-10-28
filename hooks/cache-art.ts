@@ -105,6 +105,9 @@ export const svgDoc = (w: number, h: number, body: string, font: boolean): strin
 const CHIP: Record<string, { w: number; h: number }> = {
   'WARM@13': { w: 63, h: 21 },
   'COLD@13': { w: 58, h: 21 },
+  // Scaled from the @11 sizes for mini-ribbon's shorter row, not measured.
+  'WARM@10': { w: 49, h: 17 },
+  'COLD@10': { w: 45, h: 17 },
   'WARM@11': { w: 54, h: 18 },
   'COLD@11': { w: 50, h: 18 },
   'YOU@10': { w: 36, h: 17 },
@@ -124,7 +127,7 @@ export const chipShapes = (x: number, y: number, word: string, fill: string, siz
 
 /** The WARM or COLD chip beside Robo in the band's row. */
 export const chipSvg = (mode: Mode): { source: string; w: number; h: number } => {
-  const c = chipShapes(0, 0, WORD[mode], HUE[mode], 13, 1)
+  const c = chipShapes(0, 0, WORD[mode], HUE[mode], 10, 1)
   return { source: svgDoc(c.w, c.h, c.svg, true), w: c.w, h: c.h }
 }
 
@@ -199,7 +202,8 @@ export const roboShapes = (x: number, y: number, size: number, mode: Mode): stri
 }
 
 /** Robo beside the chip in the band's row. */
-export const ROBO_SIZE = 26
+// About three quarters of ribbon's 26, so the band's row is that much shorter.
+export const ROBO_SIZE = 20
 export const roboSvg = (mode: Mode): string => svgDoc(ROBO_SIZE, ROBO_SIZE, roboShapes(0, 0, ROBO_SIZE, mode), false)
 
 // ---------- The card, laid out for the band's width ----------
