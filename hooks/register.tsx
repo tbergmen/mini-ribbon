@@ -220,6 +220,7 @@ export const register: Register = on => {
       <Box key="more-box" flexShrink={0}>
         <Markdown
           key="more"
+          dimColor
           text={`[${expanded ? 'Less' : 'More'}](${MORE_HREF})`}
           pressableLinks={[MORE_HREF]}
           onLinkPress={() => update($, expandedAtom, v => !v)}
