@@ -8,15 +8,15 @@ import {
 } from './cache-art'
 import type { CacheView } from './cache-art'
 
-// A band above the prompt in a warm dark look: card surface, cream text,
-// dot-matrix bars. Shows how much of each usage window is LEFT, 7-day first, then
-// 5-hour; 7D is orange, 5H is yellow; a window under 15% adds a bold LOW.
+// A one-row band above the prompt, cache first. After the first reply it shows
+// the prompt cache: WARM (red, Robo bobbing) with the minutes left for an hour
+// after the last request, then COLD (blue, Robo frozen) with how long it has been
+// idle and what the next message costs to re-cache. Details opens the cache card,
+// folded by default in both states.
 //
-// After the first reply it also shows the prompt cache: WARM (red, Robo bobbing)
-// for an hour after the last request, then COLD (blue, Robo frozen) with what the
-// next message costs to re-cache. Hide / Show folds the card; warm starts folded,
-// cold starts open, and a choice holds until the cache flips. Zero token cost:
-// it reads the engine's own figures and draws.
+// Usage left (7-day orange, 5-hour yellow, a bold LOW under 15%) sits behind a
+// Usage button, folded by default, because it is rarely worth a row in every
+// session. Zero token cost: it reads the engine's own figures and draws.
 
 const CELLS = 10
 const LOW_AT = 15
@@ -24,9 +24,10 @@ const TIGHT_CELLS = 6
 /** How often the band redraws, so the countdown and the warm-to-cold flip stay current. */
 const TICK_MS = 30_000
 
-const windows = atom({ plugin: 'ribbon', key: 'windows' } as const, [] as Window[])
-const cache = atom({ plugin: 'ribbon', key: 'cache' } as const, null as CacheFacts | null)
-const fold = atom({ plugin: 'ribbon', key: 'fold' } as const, null as Fold | null)
+const windows = atom({ plugin: 'mini-ribbon', key: 'windows' } as const, [] as Window[])
+const cache = atom({ plugin: 'mini-ribbon', key: 'cache' } as const, null as CacheFacts | null)
+const fold = atom({ plugin: 'mini-ribbon', key: 'fold' } as const, null as Fold | null)
+const usageShown = atom({ plugin: 'mini-ribbon', key: 'usageShown' } as const, false as boolean)
 
 const NAMES: Record<string, string> = { seven_day: '7D', five_hour: '5H', spend_limit: 'SPEND' }
 const ORDER: Record<string, number> = { seven_day: 0, five_hour: 1 }
@@ -152,14 +153,6 @@ export const register: Register = on => {
     const now = await $.clock.now()
     const view = viewOf(await read($, cache), now)
 
-    if (list.length === 0 && !view) {
-      return (
-        <Box backgroundColor={BG} paddingX={1}>
-          <Text color={MUTED}>USAGE · waiting for the first reply</Text>
-        </Box>
-      )
-    }
-
     const columns = e.props.bodyColumns ?? e.viewport?.columns ?? 100
     const kind = kindOf(columns)
     const isWide = kind === 'wide'
@@ -210,21 +203,33 @@ export const register: Register = on => {
       )
     }
 
-    const label = (
-      <Box key="label" flexShrink={0} marginRight={isWide ? 2 : 3}>
-        <Text color={TEXT} bold>USAGE</Text>
+    // Usage is folded away by default and only reachable by its button, which
+    // the terminal does not get: there the band is the cache line alone.
+    const usageOpen = Svg !== null && (await read($, usageShown))
+    const usageButton = Svg ? (
+      <Box key="usage" flexShrink={0} alignItems="flex-start" marginRight={1}>
+        <Button key="usage-fold" label={usageOpen ? 'Hide usage' : 'Usage'} onPress={() => update($, usageShown, v => !v)} />
       </Box>
-    )
-    const usage = list.length > 0
-      ? list.map(isWide ? wide : stacked)
-      : [<Box key="wait" flexShrink={0} marginRight={3}><Text color={MUTED}>waiting for the first reply</Text></Box>]
+    ) : null
+    const usageRow = usageOpen ? (
+      <Box key="usage-row" flexDirection="row" paddingX={1}>
+        {list.length > 0
+          ? list.map(isWide ? wide : stacked)
+          : <Text color={MUTED}>USAGE · waiting for the first reading</Text>}
+      </Box>
+    ) : null
+    const grow = <Box key="grow" flexGrow={1} />
 
-    // Before the first reply there is no cache to show: today's band, as it was.
+    // Before the first reply there is no cache to show yet.
     if (!view) {
       return (
-        <Box flexDirection="row" backgroundColor={BG} paddingX={1}>
-          {label}
-          {usage}
+        <Box flexDirection="column" backgroundColor={BG}>
+          <Box key="row" flexDirection="row" paddingX={1} alignItems="center">
+            <Text color={MUTED}>CACHE · waiting for the first reply</Text>
+            {grow}
+            {usageButton}
+          </Box>
+          {usageRow}
         </Box>
       )
     }
@@ -234,10 +239,11 @@ export const register: Register = on => {
     const hue = HUE[mode]
     const mine = mineModel(view)
     const stored = await read($, fold)
-    // Folding needs the card, and the card is a drawing: the terminal stays folded.
-    const open = Svg !== null && (stored && stored.mode === mode ? stored.open : cold)
+    // The card is a drawing, so the terminal stays folded; elsewhere it starts
+    // folded in both states and a choice holds until the cache flips.
+    const open = Svg !== null && stored !== null && stored.mode === mode && stored.open
     const toggle = () =>
-      update($, fold, f => ({ mode, open: !(f && f.mode === mode ? f.open : mode === 'cold') }))
+      update($, fold, f => ({ mode, open: !(f !== null && f.mode === mode && f.open) }))
 
     const badge = Svg
       ? [
@@ -258,66 +264,11 @@ export const register: Register = on => {
         ]
       : [<Text key="left" color={hue} bold>{` ${Math.max(0, TTL_MIN - view.idleMin)}m left`}</Text>]
 
-    const button = Svg ? (
+    const cardButton = Svg ? (
       <Box key="fold" flexShrink={0} alignItems="flex-start">
-        <Button key="cache-fold" label={open ? 'Hide' : 'Show'} onPress={toggle} />
+        <Button key="cache-fold" label={open ? 'Hide' : 'Details'} onPress={toggle} />
       </Box>
     ) : null
-    const grow = <Box key="grow" flexGrow={1} />
-
-    let rows
-    if (kind === 'wide') {
-      rows = (
-        <Box key="row" flexDirection="row" paddingX={1} alignItems="center">
-          {label}
-          {usage}
-          {open ? null : (
-            <Box key="inline" flexDirection="row" flexShrink={0} marginRight={2} alignItems="center">
-              {badge}
-              {summary}
-            </Box>
-          )}
-          {grow}
-          {button}
-        </Box>
-      )
-    } else if (kind === 'stacked') {
-      // The cache becomes a third stacked block, the same shape as 7D and 5H.
-      rows = (
-        <Box key="row" flexDirection="row" paddingX={1}>
-          {label}
-          {usage}
-          {open ? null : (
-            <Box key="block" flexDirection="column" flexShrink={0} marginRight={2}>
-              <Box flexDirection="row" alignItems="center">{badge}</Box>
-              <Text color={hue} bold>{cold ? `${view.idle} idle` : `${Math.max(0, TTL_MIN - view.idleMin)}m left`}</Text>
-              {mine ? (
-                <Box flexDirection="row">
-                  <Text color={TEXT} bold>{usd(costOf(mine, mode, view.tokens))}</Text>
-                  <Text color={MUTED}> next</Text>
-                </Box>
-              ) : null}
-            </Box>
-          )}
-          {grow}
-          {button}
-        </Box>
-      )
-    } else {
-      // Narrow: the cache gets its own row under the usage blocks.
-      rows = [
-        <Box key="row" flexDirection="row" paddingX={1}>
-          {label}
-          {usage}
-        </Box>,
-        <Box key="cache" flexDirection="row" paddingX={1} alignItems="center">
-          {badge}
-          {summary}
-          {grow}
-          {button}
-        </Box>,
-      ]
-    }
 
     let card = null
     if (open && Svg) {
@@ -331,7 +282,14 @@ export const register: Register = on => {
 
     return (
       <Box flexDirection="column" backgroundColor={BG}>
-        {rows}
+        <Box key="row" flexDirection="row" paddingX={1} alignItems="center">
+          {badge}
+          {summary}
+          {grow}
+          {usageButton}
+          {cardButton}
+        </Box>
+        {usageRow}
         {card}
       </Box>
     )

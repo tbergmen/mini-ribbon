@@ -1,11 +1,11 @@
 {
-  "name": "robonuggets",
-  "owner": { "name": "Jay E", "url": "https://robonuggets.com" },
+  "name": "mini-ribbon",
+  "owner": { "name": "Tunca Bergmen", "url": "https://github.com/tbergmen" },
   "plugins": [
     {
-      "name": "ribbon",
+      "name": "mini-ribbon",
       "source": "./",
-      "description": "A slim band above the prompt: usage left, reset times, and whether the prompt cache is warm or cold with what the next message costs."
+      "description": "A one-row band above the prompt: whether the prompt cache is warm or cold, the minutes left while warm, and the re-cache price when cold. Usage left sits behind a button."
     }
   ]
 }
