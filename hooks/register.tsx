@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { CacheFacts, Fold, Window } from '../types'
+import type { CacheFacts, Window } from '../types'
 import {
   BG, EMPTY, HUE, INK, MUTED, ORANGE, ROBO_SIZE, TEXT, TTL_MIN, TTL_MS, WORD, YELLOW,
   bandPx, cardSvg, chipSvg, costOf, familyOf, fmtIdle, kindOf, mineModel, roboSvg, usd,
@@ -11,23 +11,22 @@ import type { CacheView } from './cache-art'
 // A one-row band above the prompt, cache first. After the first reply it shows
 // the prompt cache: WARM (red, Robo bobbing) with the minutes left for an hour
 // after the last request, then COLD (blue, Robo frozen) with how long it has been
-// idle and what the next message costs to re-cache. Details opens the cache card,
-// folded by default in both states.
+// idle and what the next message costs to re-cache.
 //
-// Usage left (7-day orange, 5-hour yellow, a bold LOW under 15%) sits behind a
-// Usage button, folded by default, because it is rarely worth a row in every
-// session. Zero token cost: it reads the engine's own figures and draws.
+// One More link, folded by default, opens usage left (7-day orange, 5-hour
+// yellow, a bold LOW under 15%) and the cache card together: neither is worth a
+// row in every session. Zero token cost: it reads the engine's own figures and draws.
 
 const CELLS = 10
 const LOW_AT = 15
 const TIGHT_CELLS = 6
 /** How often the band redraws, so the countdown and the warm-to-cold flip stay current. */
 const TICK_MS = 30_000
+const MORE_HREF = 'https://mini-ribbon.invalid/more'
 
 const windows = atom({ plugin: 'mini-ribbon', key: 'windows' } as const, [] as Window[])
 const cache = atom({ plugin: 'mini-ribbon', key: 'cache' } as const, null as CacheFacts | null)
-const fold = atom({ plugin: 'mini-ribbon', key: 'fold' } as const, null as Fold | null)
-const usageShown = atom({ plugin: 'mini-ribbon', key: 'usageShown' } as const, false as boolean)
+const expandedAtom = atom({ plugin: 'mini-ribbon', key: 'expanded' } as const, false as boolean)
 
 const NAMES: Record<string, string> = { seven_day: '7D', five_hour: '5H', spend_limit: 'SPEND' }
 const ORDER: Record<string, number> = { seven_day: 0, five_hour: 1 }
@@ -109,7 +108,6 @@ export const register: Register = on => {
     const r = await next(e)
     if (e.source === 'clear' || e.source === 'compact') {
       await update($, cache, () => null)
-      await update($, fold, () => null)
     } else if ((e.source === 'resume' || e.source === 'fork') && typeof e.seconds_since_last_response === 'number') {
       const now = await $.clock.now()
       const lastAt = now - e.seconds_since_last_response * 1000
@@ -145,7 +143,7 @@ export const register: Register = on => {
     if (e.props.hasSurvey) return next(e)
 
     const ui = $.ui.resolve(e)
-    const { Box, Button, Text } = ui
+    const { Box, Markdown, Text } = ui
     // Svg draws on desktop, mobile and VS Code; the terminal gets the text form.
     // Ask the surface, not the table: the terminal's table still lists Svg.
     const Svg = e.surface !== 'terminal' && 'Svg' in ui ? ui.Svg : null
@@ -203,15 +201,10 @@ export const register: Register = on => {
       )
     }
 
-    // Usage is folded away by default and only reachable by its button, which
-    // the terminal does not get: there the band is the cache line alone.
-    const usageOpen = Svg !== null && (await read($, usageShown))
-    const usageButton = Svg ? (
-      <Box key="usage" flexShrink={0} alignItems="flex-start" marginRight={1}>
-        <Button key="usage-fold" label={usageOpen ? 'Hide usage' : 'Usage'} onPress={() => update($, usageShown, v => !v)} />
-      </Box>
-    ) : null
-    const usageRow = usageOpen ? (
+    // Usage and the cache card are folded away together behind one More link,
+    // which the terminal does not get: there the band is the cache line alone.
+    const expanded = Svg !== null && (await read($, expandedAtom))
+    const usageRow = expanded ? (
       <Box key="usage-row" flexDirection="row" paddingX={1}>
         {list.length > 0
           ? list.map(isWide ? wide : stacked)
@@ -220,6 +213,20 @@ export const register: Register = on => {
     ) : null
     const grow = <Box key="grow" flexGrow={1} />
 
+    // The toggle is a link in a Markdown, not a Button: a desktop draws a Button
+    // as a native control taller than a text line, which set the band's height.
+    // The href never opens; onLinkPress answers it.
+    const more = Svg ? (
+      <Box key="more-box" flexShrink={0}>
+        <Markdown
+          key="more"
+          text={`[${expanded ? 'Less' : 'More'}](${MORE_HREF})`}
+          pressableLinks={[MORE_HREF]}
+          onLinkPress={() => update($, expandedAtom, v => !v)}
+        />
+      </Box>
+    ) : null
+
     // Before the first reply there is no cache to show yet.
     if (!view) {
       return (
@@ -227,7 +234,7 @@ export const register: Register = on => {
           <Box key="row" flexDirection="row" paddingX={1} alignItems="center">
             <Text color={MUTED}>CACHE · waiting for the first reply</Text>
             {grow}
-            {usageButton}
+            {more}
           </Box>
           {usageRow}
         </Box>
@@ -238,12 +245,6 @@ export const register: Register = on => {
     const cold = mode === 'cold'
     const hue = HUE[mode]
     const mine = mineModel(view)
-    const stored = await read($, fold)
-    // The card is a drawing, so the terminal stays folded; elsewhere it starts
-    // folded in both states and a choice holds until the cache flips.
-    const open = Svg !== null && stored !== null && stored.mode === mode && stored.open
-    const toggle = () =>
-      update($, fold, f => ({ mode, open: !(f !== null && f.mode === mode && f.open) }))
 
     const badge = Svg
       ? [
@@ -264,14 +265,8 @@ export const register: Register = on => {
         ]
       : [<Text key="left" color={hue} bold>{` ${Math.max(0, TTL_MIN - view.idleMin)}m left`}</Text>]
 
-    const cardButton = Svg ? (
-      <Box key="fold" flexShrink={0} alignItems="flex-start">
-        <Button key="cache-fold" label={open ? 'Hide' : 'Details'} onPress={toggle} />
-      </Box>
-    ) : null
-
     let card = null
-    if (open && Svg) {
+    if (expanded && Svg) {
       const c = cardSvg(view, kind, bandPx(columns))
       card = (
         <Box key="card" flexDirection="row">
@@ -286,8 +281,7 @@ export const register: Register = on => {
           {badge}
           {summary}
           {grow}
-          {usageButton}
-          {cardButton}
+          {more}
         </Box>
         {usageRow}
         {card}

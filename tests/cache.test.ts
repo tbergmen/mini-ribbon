@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
+const MORE = { key: 'more', link: { href: 'https://mini-ribbon.invalid/more' } }
 const NOW = Date.parse('2098-12-31T22:00:00Z')
 const WINDOWS = [
   { kind: 'five_hour', percentUsed: 18, resetsAt: '2099-01-01T01:29:00Z' },
@@ -32,15 +33,15 @@ test('a warm cache shows Robo, the WARM chip and the minutes left on one row, fo
   expect(await band.find({ text: ' 42m left' })).toBeDefined()
   expect(await band.find({ text: '99% left' })).toBeUndefined()
   expect(await band.find({ key: 'card' })).toBeUndefined()
-  expect((await band.find({ key: 'cache-fold' }))?.props.label).toBe('Details')
+  expect((await band.find({ key: 'more' }))?.props.text).toContain('[More]')
 
-  await band.press({ key: 'cache-fold' })
+  await band.press(MORE)
   expect(await band.find({ key: 'card' })).toBeDefined()
-  expect((await band.find({ key: 'cache-fold' }))?.props.label).toBe('Hide')
+  expect((await band.find({ key: 'more' }))?.props.text).toContain('[Less]')
   await band.unmount()
 })
 
-test('a cold cache starts folded with the idle time and re-cache price, and Details opens the card', async ($, on) => {
+test('a cold cache starts folded with the idle time and re-cache price, and More opens the card', async ($, on) => {
   mock.store(on)
   mock.clock(on, { now: NOW })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
@@ -55,7 +56,7 @@ test('a cold cache starts folded with the idle time and re-cache price, and Deta
   // Opus 5.5: 770k tokens at the 1-hour write price, 2 x $4 per million.
   expect(await band.find({ text: '$6.16' })).toBeDefined()
 
-  await band.press({ key: 'cache-fold' })
+  await band.press(MORE)
   const card = await band.find({ key: 'card' })
   expect(JSON.stringify(card)).toContain('Cache cold. Idle 3d 9h. Next message re-caches 770k tokens.')
   // The page's width: 80 columns is a 1020 px band.
@@ -74,13 +75,13 @@ test('squeezed, the cache stays one row and its card is the compact one', async 
 
   const narrow = await $.ui.mount({ plugin: 'mini-ribbon', surface: 'desktop', component: 'AbovePrompt', props: { ...PROPS, bodyColumns: 33 } })
   expect(await narrow.find({ text: ' 42m left' })).toBeDefined()
-  await narrow.press({ key: 'cache-fold' })
+  await narrow.press(MORE)
   // Narrow's card is the compact one: 38 columns is a 456 px band.
   expect(JSON.stringify(await narrow.find({ key: 'card' }))).toContain('width=\\"456\\"')
   await narrow.unmount()
 })
 
-test('the terminal draws the cache as text, with no drawings and no fold button', async ($, on) => {
+test('the terminal draws the cache as text, with no drawings and no links', async ($, on) => {
   mock.store(on)
   mock.clock(on, { now: NOW })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
@@ -93,7 +94,7 @@ test('the terminal draws the cache as text, with no drawings and no fold button'
   expect(await band.find({ text: ' COLD ' })).toBeDefined()
   expect(await band.find({ text: '$6.16' })).toBeDefined()
   expect(await band.findAll({ type: 'Svg' })).toEqual([])
-  expect(await band.find({ key: 'cache-fold' })).toBeUndefined()
+  expect(await band.find({ key: 'more' })).toBeUndefined()
   expect(await band.find({ key: 'card' })).toBeUndefined()
   await band.unmount()
 })
@@ -111,7 +112,7 @@ test('a cleared session drops the cache until the next reply', async ($, on) => 
   const band = await $.ui.mount({ plugin: 'mini-ribbon', surface: 'desktop', component: 'AbovePrompt', props: PROPS })
   expect(await band.findAll({ type: 'Svg' })).toEqual([])
   expect(await band.find({ text: 'CACHE · waiting for the first reply' })).toBeDefined()
-  await band.press({ key: 'usage-fold' })
+  await band.press(MORE)
   expect(await band.find({ text: ' 99% left' })).toBeDefined()
   await band.unmount()
 })
