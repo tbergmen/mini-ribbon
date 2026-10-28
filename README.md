@@ -4,6 +4,10 @@ A cache-first fork of [robonuggets/ribbon](https://github.com/robonuggets/ribbon
 
 It shows one slim row above the prompt with the state of your prompt cache:
 
+<p align="center">
+  <img src="assets/warm.png" alt="mini-ribbon above the prompt: the robot, a WARM chip, 56m left, and a dim ⋯ at the end of the row" width="100%">
+</p>
+
 - **WARM** (red, the robot bobs) with the **minutes left** before it goes cold.
 - **COLD** (blue, the robot is frozen) with how long you've been idle and what the next message costs to re-cache.
 
