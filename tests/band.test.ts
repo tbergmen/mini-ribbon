@@ -16,7 +16,7 @@ const PROPS = {
   view: {},
 } as const
 
-test('usage is folded until More opens it, 7D before 5H', async ($, on) => {
+test('usage is folded until ⋯ opens it, 7D before 5H', async ($, on) => {
   mock.store(on)
   mock.clock(on, { now: Date.parse('2098-12-31T22:00:00Z') })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
@@ -28,14 +28,14 @@ test('usage is folded until More opens it, 7D before 5H', async ($, on) => {
   const band = await $.ui.mount({ plugin: 'mini-ribbon', surface: 'desktop', component: 'AbovePrompt', props: PROPS })
   expect(await band.find({ text: 'CACHE · waiting for the first reply' })).toBeDefined()
   expect(await band.find({ text: '42% left' })).toBeUndefined()
-  expect((await band.find({ key: 'more' }))?.props.text).toContain('[More]')
+  expect((await band.find({ key: 'more' }))?.props.text).toContain('[⋯]')
 
   await band.press(MORE)
   expect(await band.find({ text: '42% left' })).toBeDefined()
   expect(await band.find({ text: '87.5% left' })).toBeDefined()
   const all = JSON.stringify(await band.find({ type: 'Box' }))
   expect(all.indexOf('7D')).toBeLessThan(all.indexOf('5H'))
-  expect((await band.find({ key: 'more' }))?.props.text).toContain('[Less]')
+  expect((await band.find({ key: 'more' }))?.props.text).toContain('[×]')
 
   await band.press(MORE)
   expect(await band.find({ text: '42% left' })).toBeUndefined()
@@ -58,7 +58,7 @@ test('in a narrow band opened usage stacks, with percent left and reset time on 
   await band.unmount()
 })
 
-test('the terminal shows no usage and no More link', async ($, on) => {
+test('the terminal shows no usage and no ⋯ link', async ($, on) => {
   mock.store(on)
   mock.clock(on, { now: Date.parse('2098-12-31T22:00:00Z') })
   on('session.start', ($, e) => ({ cwd: e.cwd }))

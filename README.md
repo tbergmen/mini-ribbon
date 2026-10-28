@@ -7,7 +7,7 @@ It shows one slim row above the prompt with the state of your prompt cache:
 - **WARM** (red, the robot bobs) with the **minutes left** before it goes cold.
 - **COLD** (blue, the robot is frozen) with how long you've been idle and what the next message costs to re-cache.
 
-Everything else sits behind one **More** link at the end of the row, folded by default: usage left in the 7-day and 5-hour windows, and the cache card (idle time, cached tokens, the next message's price on each model). **Less** folds them again. It is a link rather than a button so the row stays one text line tall.
+Everything else sits behind one dim **⋯** link at the end of the row, folded by default: usage left in the 7-day and 5-hour windows, and the cache card (idle time, cached tokens, the next message's price on each model). **×** folds them again. It is a link rather than a button so the row stays one text line tall.
 
 In a terminal, the band shows only the cache line as plain text, with no link.
 
@@ -15,8 +15,8 @@ In a terminal, the band shows only the cache line as plain text, with no link.
 
 | | ribbon | mini-ribbon |
 |---|---|---|
-| Usage bars | always shown | behind **More**, folded |
-| Cache card | Show/Hide button; opens on its own when cold | behind the same **More**, folded |
+| Usage bars | always shown | behind **⋯**, folded |
+| Cache card | Show/Hide button; opens on its own when cold | behind the same **⋯**, folded |
 | Row height | a button and a 26 px robot | one text line, a 20 px robot |
 
 ## Install

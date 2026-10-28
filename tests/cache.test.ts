@@ -33,15 +33,15 @@ test('a warm cache shows Robo, the WARM chip and the minutes left on one row, fo
   expect(await band.find({ text: ' 42m left' })).toBeDefined()
   expect(await band.find({ text: '99% left' })).toBeUndefined()
   expect(await band.find({ key: 'card' })).toBeUndefined()
-  expect((await band.find({ key: 'more' }))?.props.text).toContain('[More]')
+  expect((await band.find({ key: 'more' }))?.props.text).toContain('[⋯]')
 
   await band.press(MORE)
   expect(await band.find({ key: 'card' })).toBeDefined()
-  expect((await band.find({ key: 'more' }))?.props.text).toContain('[Less]')
+  expect((await band.find({ key: 'more' }))?.props.text).toContain('[×]')
   await band.unmount()
 })
 
-test('a cold cache starts folded with the idle time and re-cache price, and More opens the card', async ($, on) => {
+test('a cold cache starts folded with the idle time and re-cache price, and ⋯ opens the card', async ($, on) => {
   mock.store(on)
   mock.clock(on, { now: NOW })
   on('session.start', ($, e) => ({ cwd: e.cwd }))

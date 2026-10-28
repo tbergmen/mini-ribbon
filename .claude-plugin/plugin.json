@@ -1,6 +1,6 @@
 {
   "name": "mini-ribbon",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A one-row band above the prompt: whether the prompt cache is warm or cold, the minutes left while warm, and the re-cache price when cold. Usage left sits behind a button. A fork of robonuggets/ribbon.",
   "author": { "name": "Tunca Bergmen", "url": "https://github.com/tbergmen" },
   "homepage": "https://github.com/tbergmen/mini-ribbon",

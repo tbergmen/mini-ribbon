@@ -13,7 +13,7 @@ import type { CacheView } from './cache-art'
 // after the last request, then COLD (blue, Robo frozen) with how long it has been
 // idle and what the next message costs to re-cache.
 //
-// One More link, folded by default, opens usage left (7-day orange, 5-hour
+// One ⋯ link, folded by default, opens usage left (7-day orange, 5-hour
 // yellow, a bold LOW under 15%) and the cache card together: neither is worth a
 // row in every session. Zero token cost: it reads the engine's own figures and draws.
 
@@ -201,7 +201,7 @@ export const register: Register = on => {
       )
     }
 
-    // Usage and the cache card are folded away together behind one More link,
+    // Usage and the cache card are folded away together behind one ⋯ link,
     // which the terminal does not get: there the band is the cache line alone.
     const expanded = Svg !== null && (await read($, expandedAtom))
     const usageRow = expanded ? (
@@ -221,7 +221,7 @@ export const register: Register = on => {
         <Markdown
           key="more"
           dimColor
-          text={`[${expanded ? 'Less' : 'More'}](${MORE_HREF})`}
+          text={`[${expanded ? '×' : '⋯'}](${MORE_HREF})`}
           pressableLinks={[MORE_HREF]}
           onLinkPress={() => update($, expandedAtom, v => !v)}
         />
